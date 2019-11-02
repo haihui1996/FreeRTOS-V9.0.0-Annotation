@@ -1825,10 +1825,10 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 
 void vTaskStartScheduler( void )
 {
-BaseType_t xReturn;
+BaseType_t xReturn;		/* 存储返回值 [haihui.deng 2019/11/02 14:09]*/
 
-	/* Add the idle task at the lowest priority. */
-	#if( configSUPPORT_STATIC_ALLOCATION == 1 )
+	/* Add the idle task at the lowest priority. */	/* 创建优先级最低的空闲任务 [haihui.deng 2019/11/02 14:09]*/
+	#if( configSUPPORT_STATIC_ALLOCATION == 1 )  /* 若定义了宏<configSUPPORT_STATIC_ALLOCATION = 1>，则使用静态方式创建，否则使用动态创建IDLE task，默认是使用动态方式*/
 	{
 		StaticTask_t *pxIdleTaskTCBBuffer = NULL;
 		StackType_t *pxIdleTaskStackBuffer = NULL;
@@ -1854,13 +1854,13 @@ BaseType_t xReturn;
 			xReturn = pdFAIL;
 		}
 	}
-	#else
+	#else/* 动态创建IDLE task */
 	{
 		/* The Idle task is being created using dynamically allocated RAM. */
-		xReturn = xTaskCreate(	prvIdleTask,
-								"IDLE", configMINIMAL_STACK_SIZE,
+		xReturn = xTaskCreate(	prvIdleTask,	/* IDLE task function */
+								"IDLE", configMINIMAL_STACK_SIZE, /* <configMINIMAL_STACK_SIZE>: 任务堆栈大小，需要用户在配置文件FreeRTOSConfig.h中自定义 */
 								( void * ) NULL,
-								( tskIDLE_PRIORITY | portPRIVILEGE_BIT ),
+								( tskIDLE_PRIORITY | portPRIVILEGE_BIT ),	/* 优先级定义为0，最低 */
 								&xIdleTaskHandle ); /*lint !e961 MISRA exception, justified as it is not a redundant explicit cast to all supported compilers. */
 	}
 	#endif /* configSUPPORT_STATIC_ALLOCATION */
@@ -3119,7 +3119,7 @@ void vTaskMissedYield( void )
 
 /*
  * -----------------------------------------------------------
- * The Idle task.
+ * The Idle task. 空闲任务函数
  * ----------------------------------------------------------
  *
  * The portTASK_FUNCTION() macro is used to allow port/compiler specific
@@ -3140,15 +3140,15 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 	{
 		/* See if any tasks have deleted themselves - if so then the idle task
 		is responsible for freeing the deleted task's TCB and stack. */
-		prvCheckTasksWaitingTermination();
+		prvCheckTasksWaitingTermination(); /* 看是否有任务被删除，若有，则IDLE task负责释放该任务的任务控制块及堆栈 */
 
-		#if ( configUSE_PREEMPTION == 0 )
+		#if ( configUSE_PREEMPTION == 0 ) /* 是否没配置抢占式内核，若没，手动切换任务 */
 		{
 			/* If we are not using preemption we keep forcing a task switch to
 			see if any other task has become available.  If we are using
 			preemption we don't need to do this as any task becoming available
 			will automatically get the processor anyway. */
-			taskYIELD();
+			taskYIELD();	/* 若没有使用抢占式内核，则需要手动进行任务切换，去看看是否有其他高优先级的任务就绪，若有，会自动切换 */
 		}
 		#endif /* configUSE_PREEMPTION */
 
@@ -3373,28 +3373,28 @@ static void prvCheckTasksWaitingTermination( void )
 
 		/* ucTasksDeleted is used to prevent vTaskSuspendAll() being called
 		too often in the idle task. */
-		while( uxDeletedTasksWaitingCleanUp > ( UBaseType_t ) 0U )
+		while( uxDeletedTasksWaitingCleanUp > ( UBaseType_t ) 0U ) /* 存在等待被清除的任务 */
 		{
-			vTaskSuspendAll();
+			vTaskSuspendAll(); /* 挂起任务调度器 */
 			{
-				xListIsEmpty = listLIST_IS_EMPTY( &xTasksWaitingTermination );
+				xListIsEmpty = listLIST_IS_EMPTY( &xTasksWaitingTermination ); /* 检查等待释放的任务队列是否为空 */
 			}
-			( void ) xTaskResumeAll();
+			( void ) xTaskResumeAll(); /* 恢复任务调度器 */
 
-			if( xListIsEmpty == pdFALSE )
+			if( xListIsEmpty == pdFALSE ) /* 队列不为空，有任务等待被释放 */
 			{
 				TCB_t *pxTCB;
 
-				taskENTER_CRITICAL();
+				taskENTER_CRITICAL(); /* 进入临界区，将任务链表项从等待释放的链表中删除 */
 				{
 					pxTCB = ( TCB_t * ) listGET_OWNER_OF_HEAD_ENTRY( ( &xTasksWaitingTermination ) );
 					( void ) uxListRemove( &( pxTCB->xStateListItem ) );
 					--uxCurrentNumberOfTasks;
 					--uxDeletedTasksWaitingCleanUp;
 				}
-				taskEXIT_CRITICAL();
+				taskEXIT_CRITICAL(); /* 退出临界区 */
 
-				prvDeleteTCB( pxTCB );
+				prvDeleteTCB( pxTCB ); /* 删除任务控制块，释放内存 */
 			}
 			else
 			{
