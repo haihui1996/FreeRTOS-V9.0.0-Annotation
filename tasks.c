@@ -3154,10 +3154,10 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 
 		#if ( ( configUSE_PREEMPTION == 1 ) && ( configIDLE_SHOULD_YIELD == 1 ) )
 		{
-			/* When using preemption tasks of equal priority will be
-			timesliced.  If a task that is sharing the idle priority is ready
-			to run then the idle task should yield before the end of the
-			timeslice.
+			/* When using preemption tasks of equal priority will be			如果使用抢占式内核并且使能时间调度的话，当有任务和空闲任务共享
+			timesliced.  If a task that is sharing the idle priority is ready	一个优先级并且处于就绪态的话，空闲任务应当放弃本时间片，将本时
+			to run then the idle task should yield before the end of the		间片剩余的时间让给这个就绪的任务，如果在空闲任务优先下的就绪列
+			timeslice.															表中有多个用户任务的话就执行这些任务，而不空闲
 
 			A critical region is not required here as we are just reading from
 			the list, and an occasional incorrect value will not matter.  If
@@ -3165,7 +3165,7 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 			then a task other than the idle task is ready to execute. */
 			if( listCURRENT_LIST_LENGTH( &( pxReadyTasksLists[ tskIDLE_PRIORITY ] ) ) > ( UBaseType_t ) 1 )
 			{
-				taskYIELD();
+				taskYIELD(); /* 检查空闲任务的就绪列表是否为空，若不空，则进行任务切换 */
 			}
 			else
 			{
@@ -3174,12 +3174,12 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 		}
 		#endif /* ( ( configUSE_PREEMPTION == 1 ) && ( configIDLE_SHOULD_YIELD == 1 ) ) */
 
-		#if ( configUSE_IDLE_HOOK == 1 )
+		#if ( configUSE_IDLE_HOOK == 1 )	/* 若使能空闲任务钩子 */
 		{
-			extern void vApplicationIdleHook( void );
+			extern void vApplicationIdleHook( void );	/* 钩子函数由用户在其他位置自定义，名字可以自己改，反正源码开放的 */
 
-			/* Call the user defined function from within the idle task.  This
-			allows the application designer to add background functionality
+			/* Call the user defined function from within the idle task.  This		执行用户定义的空闲任务钩子函数，
+			allows the application designer to add background functionality			钩子函数里面不能使用任何可以引起阻塞空闲任务的API
 			without the overhead of a separate task.
 			NOTE: vApplicationIdleHook() MUST NOT, UNDER ANY CIRCUMSTANCES,
 			CALL A FUNCTION THAT MIGHT BLOCK. */
@@ -3191,7 +3191,7 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 		to 1.  This is to ensure portSUPPRESS_TICKS_AND_SLEEP() is called when
 		user defined low power mode	implementations require
 		configUSE_TICKLESS_IDLE to be set to a value other than 1. */
-		#if ( configUSE_TICKLESS_IDLE != 0 )
+		#if ( configUSE_TICKLESS_IDLE != 0 ) /* 判断是否使能了Tickless(低功耗模式) */
 		{
 		TickType_t xExpectedIdleTime;
 
@@ -3200,7 +3200,7 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 			test of the expected idle time is performed without the
 			scheduler suspended.  The result here is not necessarily
 			valid. */
-			xExpectedIdleTime = prvGetExpectedIdleTime();
+			xExpectedIdleTime = prvGetExpectedIdleTime(); /* 获取MCU进入低功耗模式的时长（时钟节拍数） */
 
 			if( xExpectedIdleTime >= configEXPECTED_IDLE_TIME_BEFORE_SLEEP )
 			{
