@@ -1865,11 +1865,11 @@ BaseType_t xReturn;		/* 存储返回值 [haihui.deng 2019/11/02 14:09]*/
 	}
 	#endif /* configSUPPORT_STATIC_ALLOCATION */
 
-	#if ( configUSE_TIMERS == 1 )
+	#if ( configUSE_TIMERS == 1 )	/* 判断软件定时器是否使能 */
 	{
 		if( xReturn == pdPASS )
 		{
-			xReturn = xTimerCreateTimerTask();
+			xReturn = xTimerCreateTimerTask();/* 若软件定时器使能，且空闲任务创建成功了的话，那么我们这里创建一个定时器服务任务 */
 		}
 		else
 		{
@@ -1885,9 +1885,9 @@ BaseType_t xReturn;		/* 存储返回值 [haihui.deng 2019/11/02 14:09]*/
 		the created tasks contain a status word with interrupts switched on
 		so interrupts will automatically get re-enabled when the first task
 		starts to run. */
-		portDISABLE_INTERRUPTS();
+		portDISABLE_INTERRUPTS(); /* 关中断， */
 
-		#if ( configUSE_NEWLIB_REENTRANT == 1 )
+		#if ( configUSE_NEWLIB_REENTRANT == 1 ) /* 判断是否使能NEWLIB，（不知道是什么来的） */
 		{
 			/* Switch Newlib's _impure_ptr variable to point to the _reent
 			structure specific to the task that will run first. */
@@ -1895,20 +1895,20 @@ BaseType_t xReturn;		/* 存储返回值 [haihui.deng 2019/11/02 14:09]*/
 		}
 		#endif /* configUSE_NEWLIB_REENTRANT */
 
-		xNextTaskUnblockTime = portMAX_DELAY;
-		xSchedulerRunning = pdTRUE;
-		xTickCount = ( TickType_t ) 0U;
+		xNextTaskUnblockTime = portMAX_DELAY;	/* 复位阻塞时间 */
+		xSchedulerRunning = pdTRUE; 			/* 将xSchedulerRunning设置为pdTRUE，用来表示调度器开始运行了 */
+		xTickCount = ( TickType_t ) 0U;			/* 清空时钟节拍计数 */
 
 		/* If configGENERATE_RUN_TIME_STATS is defined then the following
 		macro must be defined to configure the timer/counter used to generate
 		the run time counter time base. */
-		portCONFIGURE_TIMER_FOR_RUN_TIME_STATS();
+		portCONFIGURE_TIMER_FOR_RUN_TIME_STATS(); /* 如果你使能了时间计数功能（一般用作调试），那么你就要自己实现这个用来配置定时器/计数器的宏，不然没法统计任务运行时间 */
 
 		/* Setting up the timer tick is hardware specific and thus in the
 		portable interface. */
-		if( xPortStartScheduler() != pdFALSE )
+		if( xPortStartScheduler() != pdFALSE )/* xPortStartScheduler()这个函数是用来初始化跟任务调度相关的硬件的，例如滴答定时器之类的 */
 		{
-			/* Should not reach here as if the scheduler is running the
+			/* Should not reach here as if the scheduler is running the		如果初始化成功了的话，就直接切换到任务函数了，不会再跑到这里
 			function will not return. */
 		}
 		else
@@ -1921,12 +1921,12 @@ BaseType_t xReturn;		/* 存储返回值 [haihui.deng 2019/11/02 14:09]*/
 		/* This line will only be reached if the kernel could not be started,
 		because there was not enough FreeRTOS heap to create the idle task
 		or the timer task. */
-		configASSERT( xReturn != errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY );
+		configASSERT( xReturn != errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY ); /* 要是运行到这里就GG了，内核都没启动，原因可能是内存不足创建IDLE任务或者定时器任务时候失败了 */
 	}
 
 	/* Prevent compiler warnings if INCLUDE_xTaskGetIdleTaskHandle is set to 0,
 	meaning xIdleTaskHandle is not used anywhere else. */
-	( void ) xIdleTaskHandle;
+	( void ) xIdleTaskHandle; /* 不干啥，防止编译warning而已 */
 }
 /*-----------------------------------------------------------*/
 
@@ -3202,20 +3202,20 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 			valid. */
 			xExpectedIdleTime = prvGetExpectedIdleTime(); /* 获取MCU进入低功耗模式的时长（时钟节拍数） */
 
-			if( xExpectedIdleTime >= configEXPECTED_IDLE_TIME_BEFORE_SLEEP )
+			if( xExpectedIdleTime >= configEXPECTED_IDLE_TIME_BEFORE_SLEEP ) /* 时间间隔达到一定长度才有意义，不然一直切换睡眠/唤醒更浪费 */
 			{
-				vTaskSuspendAll();
+				vTaskSuspendAll(); /* 间隔长度达到，那就挂起任务调度器吧，其实这也实现了临界区代码的保护啦 */
 				{
 					/* Now the scheduler is suspended, the expected idle
 					time can be sampled again, and this time its value can
 					be used. */
 					configASSERT( xNextTaskUnblockTime >= xTickCount );
-					xExpectedIdleTime = prvGetExpectedIdleTime();
+					xExpectedIdleTime = prvGetExpectedIdleTime(); /* 再获取一次时间，因为执行到这里也花了时间 */
 
 					if( xExpectedIdleTime >= configEXPECTED_IDLE_TIME_BEFORE_SLEEP )
 					{
 						traceLOW_POWER_IDLE_BEGIN();
-						portSUPPRESS_TICKS_AND_SLEEP( xExpectedIdleTime );
+						portSUPPRESS_TICKS_AND_SLEEP( xExpectedIdleTime ); /* 休眠函数，开启休眠，函数的实现因内核而异 */
 						traceLOW_POWER_IDLE_END();
 					}
 					else
@@ -3223,7 +3223,7 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 						mtCOVERAGE_TEST_MARKER();
 					}
 				}
-				( void ) xTaskResumeAll();
+				( void ) xTaskResumeAll(); /* 恢复任务调度器 */
 			}
 			else
 			{
