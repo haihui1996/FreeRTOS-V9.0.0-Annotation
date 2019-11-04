@@ -673,12 +673,12 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #if( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
 
-	BaseType_t xTaskCreate(	TaskFunction_t pxTaskCode,
-							const char * const pcName,
-							const uint16_t usStackDepth,
-							void * const pvParameters,
-							UBaseType_t uxPriority,
-							TaskHandle_t * const pxCreatedTask ) /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
+	BaseType_t xTaskCreate(	TaskFunction_t pxTaskCode,	/* 任务函数 */
+							const char * const pcName,	/* 任务名称，内核不会使用 */
+							const uint16_t usStackDepth, /* 任务堆栈大小 */
+							void * const pvParameters,	/* 给任务传递的参数 */
+							UBaseType_t uxPriority,		/* 任务优先级 */
+							TaskHandle_t * const pxCreatedTask ) /* 保存任务句柄 *//*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 	{
 	TCB_t *pxNewTCB;
 	BaseType_t xReturn;
@@ -712,24 +712,24 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		{
 		StackType_t *pxStack;
 
-			/* Allocate space for the stack used by the task being created. */
+			/* Allocate space for the stack used by the task being created. */ /* pvPortMalloc申请任务堆栈的内存 */
 			pxStack = ( StackType_t * ) pvPortMalloc( ( ( ( size_t ) usStackDepth ) * sizeof( StackType_t ) ) ); /*lint !e961 MISRA exception as the casts are only redundant for some ports. */
 
-			if( pxStack != NULL )
+			if( pxStack != NULL ) /* 任务堆栈申请成功 */
 			{
-				/* Allocate space for the TCB. */
+				/* Allocate space for the TCB. */ /* 申请任务控制块内存 */
 				pxNewTCB = ( TCB_t * ) pvPortMalloc( sizeof( TCB_t ) ); /*lint !e961 MISRA exception as the casts are only redundant for some paths. */
 
 				if( pxNewTCB != NULL )
 				{
 					/* Store the stack location in the TCB. */
-					pxNewTCB->pxStack = pxStack;
+					pxNewTCB->pxStack = pxStack; /* 任务控制块内存申请成功的话，初始化其中的变量pxStack，使其指向申请好的任务堆栈内存 */
 				}
 				else
 				{
 					/* The stack cannot be used as the TCB was not created.  Free
 					it again. */
-					vPortFree( pxStack );
+					vPortFree( pxStack ); /* 如果TCB内存申请失败（一般是内存不足）则退回操作，释放任务堆栈内存 */
 				}
 			}
 			else
@@ -739,18 +739,18 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		}
 		#endif /* portSTACK_GROWTH */
 
-		if( pxNewTCB != NULL )
+		if( pxNewTCB != NULL ) /* TCB内存申请成功 */
 		{
-			#if( tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0 )
+			#if( tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0 ) /* 既使能了动态方法创建，也使能了静态方法创建 */
 			{
 				/* Tasks can be created statically or dynamically, so note this
 				task was created dynamically in case it is later deleted. */
-				pxNewTCB->ucStaticallyAllocated = tskDYNAMICALLY_ALLOCATED_STACK_AND_TCB;
+				pxNewTCB->ucStaticallyAllocated = tskDYNAMICALLY_ALLOCATED_STACK_AND_TCB; /* 标记任务控制块是冬天分配得到的 */
 			}
 			#endif /* configSUPPORT_STATIC_ALLOCATION */
-
+			/* 初始化任务 */
 			prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, pxCreatedTask, pxNewTCB, NULL );
-			prvAddNewTaskToReadyList( pxNewTCB );
+			prvAddNewTaskToReadyList( pxNewTCB ); /* 将新创建的任务加入就绪列表中 */
 			xReturn = pdPASS;
 		}
 		else
@@ -764,13 +764,13 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
 /*-----------------------------------------------------------*/
 
-static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,
-									const char * const pcName,
-									const uint32_t ulStackDepth,
-									void * const pvParameters,
-									UBaseType_t uxPriority,
-									TaskHandle_t * const pxCreatedTask,
-									TCB_t *pxNewTCB,
+static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,		/* 任务函数 */
+									const char * const pcName,		/* 任务名称 */
+									const uint32_t ulStackDepth,	/* 任务堆栈深度 */
+									void * const pvParameters,		/* 任务参数 */
+									UBaseType_t uxPriority,			/* 任务优先级 */
+									TaskHandle_t * const pxCreatedTask,	/* 任务句柄存储位置 */
+									TCB_t *pxNewTCB,				/* 任务控制块 */
 									const MemoryRegion_t * const xRegions ) /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 {
 StackType_t *pxTopOfStack;
@@ -792,7 +792,7 @@ UBaseType_t x;
 
 	/* Avoid dependency on memset() if it is not required. */
 	#if( ( configCHECK_FOR_STACK_OVERFLOW > 1 ) || ( configUSE_TRACE_FACILITY == 1 ) || ( INCLUDE_uxTaskGetStackHighWaterMark == 1 ) )
-	{
+	{	/* 如果使能了堆栈溢出检测或者追踪功能的话，就使用一个定制来填充堆栈 */
 		/* Fill the stack with a known value to assist debugging. */
 		( void ) memset( pxNewTCB->pxStack, ( int ) tskSTACK_FILL_BYTE, ( size_t ) ulStackDepth * sizeof( StackType_t ) );
 	}
@@ -801,10 +801,10 @@ UBaseType_t x;
 	/* Calculate the top of stack address.  This depends on whether the stack
 	grows from high memory to low (as per the 80x86) or vice versa.
 	portSTACK_GROWTH is used to make the result positive or negative as required
-	by the port. */
+	by the port. */ /* 计算栈顶位置 */
 	#if( portSTACK_GROWTH < 0 )
-	{
-		pxTopOfStack = pxNewTCB->pxStack + ( ulStackDepth - ( uint32_t ) 1 );
+	{	
+		pxTopOfStack = pxNewTCB->pxStack + ( ulStackDepth - ( uint32_t ) 1 ); 
 		pxTopOfStack = ( StackType_t * ) ( ( ( portPOINTER_SIZE_TYPE ) pxTopOfStack ) & ( ~( ( portPOINTER_SIZE_TYPE ) portBYTE_ALIGNMENT_MASK ) ) ); /*lint !e923 MISRA exception.  Avoiding casts between pointers and integers is not practical.  Size differences accounted for using portPOINTER_SIZE_TYPE type. */
 
 		/* Check the alignment of the calculated top of stack is correct. */
@@ -823,7 +823,7 @@ UBaseType_t x;
 	}
 	#endif /* portSTACK_GROWTH */
 
-	/* Store the task name in the TCB. */
+	/* Store the task name in the TCB. */ /* 保存任务名称到TCB */
 	for( x = ( UBaseType_t ) 0; x < ( UBaseType_t ) configMAX_TASK_NAME_LEN; x++ )
 	{
 		pxNewTCB->pcTaskName[ x ] = pcName[ x ];
@@ -843,11 +843,11 @@ UBaseType_t x;
 
 	/* Ensure the name string is terminated in the case that the string length
 	was greater or equal to configMAX_TASK_NAME_LEN. */
-	pxNewTCB->pcTaskName[ configMAX_TASK_NAME_LEN - 1 ] = '\0';
+	pxNewTCB->pcTaskName[ configMAX_TASK_NAME_LEN - 1 ] = '\0';	/* 任务名数组添加字符串结束符 */
 
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( uxPriority >= ( UBaseType_t ) configMAX_PRIORITIES )
+	if( uxPriority >= ( UBaseType_t ) configMAX_PRIORITIES )	/* 判断优先级的合法性 */
 	{
 		uxPriority = ( UBaseType_t ) configMAX_PRIORITIES - ( UBaseType_t ) 1U;
 	}
@@ -856,38 +856,38 @@ UBaseType_t x;
 		mtCOVERAGE_TEST_MARKER();
 	}
 
-	pxNewTCB->uxPriority = uxPriority;
-	#if ( configUSE_MUTEXES == 1 )
+	pxNewTCB->uxPriority = uxPriority;	/* 初始化任务优先级 */
+	#if ( configUSE_MUTEXES == 1 ) /* 若使能了互斥信号量功能，需完成对应的初始化 */
 	{
 		pxNewTCB->uxBasePriority = uxPriority;
 		pxNewTCB->uxMutexesHeld = 0;
 	}
 	#endif /* configUSE_MUTEXES */
-
+	/* 初始化两个链表 */
 	vListInitialiseItem( &( pxNewTCB->xStateListItem ) );
 	vListInitialiseItem( &( pxNewTCB->xEventListItem ) );
 
 	/* Set the pxNewTCB as a link back from the ListItem_t.  This is so we can get
 	back to	the containing TCB from a generic item in a list. */
-	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xStateListItem ), pxNewTCB );
+	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xStateListItem ), pxNewTCB ); /* 设置列表项xStateListItem属于当前任务的TCB */
 
 	/* Event lists are always in priority order. */
 	listSET_LIST_ITEM_VALUE( &( pxNewTCB->xEventListItem ), ( TickType_t ) configMAX_PRIORITIES - ( TickType_t ) uxPriority ); /*lint !e961 MISRA exception as the casts are only redundant for some ports. */
-	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xEventListItem ), pxNewTCB );
+	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xEventListItem ), pxNewTCB );/* 设置列表项xEventListItem属于当前任务的TCB */
 
-	#if ( portCRITICAL_NESTING_IN_TCB == 1 )
+	#if ( portCRITICAL_NESTING_IN_TCB == 1 )	/* 使能了临界区嵌套，则完成对应初始化 */
 	{
 		pxNewTCB->uxCriticalNesting = ( UBaseType_t ) 0U;
 	}
 	#endif /* portCRITICAL_NESTING_IN_TCB */
 
-	#if ( configUSE_APPLICATION_TASK_TAG == 1 )
+	#if ( configUSE_APPLICATION_TASK_TAG == 1 )		/* 标签功能对应的初始化 */
 	{
 		pxNewTCB->pxTaskTag = NULL;
 	}
 	#endif /* configUSE_APPLICATION_TASK_TAG */
 
-	#if ( configGENERATE_RUN_TIME_STATS == 1 )
+	#if ( configGENERATE_RUN_TIME_STATS == 1 )		/* 时间统计功能对应的初始化 */
 	{
 		pxNewTCB->ulRunTimeCounter = 0UL;
 	}
@@ -904,7 +904,7 @@ UBaseType_t x;
 	}
 	#endif
 
-	#if( configNUM_THREAD_LOCAL_STORAGE_POINTERS != 0 )
+	#if( configNUM_THREAD_LOCAL_STORAGE_POINTERS != 0 )	/* 若使能了线程本地存储，初始化线程本地存储指针，用户应用程序可以在这些本地存储中存一些数据 */
 	{
 		for( x = 0; x < ( UBaseType_t ) configNUM_THREAD_LOCAL_STORAGE_POINTERS; x++ )
 		{
@@ -913,21 +913,21 @@ UBaseType_t x;
 	}
 	#endif
 
-	#if ( configUSE_TASK_NOTIFICATIONS == 1 )
+	#if ( configUSE_TASK_NOTIFICATIONS == 1 )	/* 任务通知功能初始化 */
 	{
 		pxNewTCB->ulNotifiedValue = 0;
 		pxNewTCB->ucNotifyState = taskNOT_WAITING_NOTIFICATION;
 	}
 	#endif
 
-	#if ( configUSE_NEWLIB_REENTRANT == 1 )
+	#if ( configUSE_NEWLIB_REENTRANT == 1 ) 	/* NEWLIB功能初始化 */
 	{
 		/* Initialise this task's Newlib reent structure. */
 		_REENT_INIT_PTR( ( &( pxNewTCB->xNewLib_reent ) ) );
 	}
 	#endif
 
-	#if( INCLUDE_xTaskAbortDelay == 1 )
+	#if( INCLUDE_xTaskAbortDelay == 1 )			/* 若使能函数xTaskAbortDelay()，完成对应初始化 */
 	{
 		pxNewTCB->ucDelayAborted = pdFALSE;
 	}
@@ -936,7 +936,7 @@ UBaseType_t x;
 	/* Initialize the TCB stack to look as if the task was already running,
 	but had been interrupted by the scheduler.  The return address is set
 	to the start of the task function. Once the stack has been initialised
-	the	top of stack variable is updated. */
+	the	top of stack variable is updated. */	/* 初始化任务堆栈 */
 	#if( portUSING_MPU_WRAPPERS == 1 )
 	{
 		pxNewTCB->pxTopOfStack = pxPortInitialiseStack( pxTopOfStack, pxTaskCode, pvParameters, xRunPrivileged );
@@ -951,7 +951,7 @@ UBaseType_t x;
 	{
 		/* Pass the handle out in an anonymous way.  The handle can be used to
 		change the created task's priority, delete the created task, etc.*/
-		*pxCreatedTask = ( TaskHandle_t ) pxNewTCB;
+		*pxCreatedTask = ( TaskHandle_t ) pxNewTCB;		/* 任务句柄的赋值 */
 	}
 	else
 	{
