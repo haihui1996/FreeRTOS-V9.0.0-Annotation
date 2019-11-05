@@ -178,19 +178,19 @@ use of FreeRTOS.*/
 /*
  * Definition of the only type of object that a list can contain.
  */
-struct xLIST_ITEM   /* 链表项，用于记录有效数据的实体，由链表串起来 */
+struct xLIST_ITEM   /* 列表项，用于记录有效数据的实体，由列表串起来 */
 {
 	listFIRST_LIST_ITEM_INTEGRITY_CHECK_VALUE			/* 用于完整性检查 */ /*< Set to a known value if configUSE_LIST_DATA_INTEGRITY_CHECK_BYTES is set to 1. */
 	configLIST_VOLATILE TickType_t xItemValue;			/* 实际存储的值 */ /*< The value being listed.  In most cases this is used to sort the list in descending order. */
 	struct xLIST_ITEM * configLIST_VOLATILE pxNext;		/*< Pointer to the next ListItem_t in the list. */
 	struct xLIST_ITEM * configLIST_VOLATILE pxPrevious;	/*< Pointer to the previous ListItem_t in the list. */
 	void * pvOwner;										/* 属于哪一个TCB */ /*< Pointer to the object (normally a TCB) that contains the list item.  There is therefore a two way link between the object containing the list item and the list item itself. */
-	void * configLIST_VOLATILE pvContainer;				/* 属于哪一条链表 */ /*< Pointer to the list in which this list item is placed (if any). */
+	void * configLIST_VOLATILE pvContainer;				/* 属于哪一条列表 */ /*< Pointer to the list in which this list item is placed (if any). */
 	listSECOND_LIST_ITEM_INTEGRITY_CHECK_VALUE			/* 用于完整性检查 */ /*< Set to a known value if configUSE_LIST_DATA_INTEGRITY_CHECK_BYTES is set to 1. */
 };
 typedef struct xLIST_ITEM ListItem_t;					/* For some reason lint wants this as two separate definitions. */
 
-struct xMINI_LIST_ITEM  /* mini链表项，链表项(ListItem_t)的简化版  */
+struct xMINI_LIST_ITEM  /* mini列表项，列表项(ListItem_t)的简化版  */
 {
 	listFIRST_LIST_ITEM_INTEGRITY_CHECK_VALUE			/*< Set to a known value if configUSE_LIST_DATA_INTEGRITY_CHECK_BYTES is set to 1. */
 	configLIST_VOLATILE TickType_t xItemValue;
@@ -202,12 +202,12 @@ typedef struct xMINI_LIST_ITEM MiniListItem_t;
 /*
  * Definition of the type of queue used by the scheduler.
  */
-typedef struct xLIST    /* 链表结构体，用于连接一个个链表项(ListItem_t) */
+typedef struct xLIST    /* 列表结构体，用于连接一个个列表项(ListItem_t) */
 {
 	listFIRST_LIST_INTEGRITY_CHECK_VALUE				/* 用于完整性检查 */ /*< Set to a known value if configUSE_LIST_DATA_INTEGRITY_CHECK_BYTES is set to 1. */
-	configLIST_VOLATILE UBaseType_t uxNumberOfItems;    /* 记录链表项的数量 */
-	ListItem_t * configLIST_VOLATILE pxIndex;			/* 链表项指针，用来记录当前链表项 */ /*< Used to walk through the list.  Points to the last item returned by a call to listGET_OWNER_OF_NEXT_ENTRY (). */
-	MiniListItem_t xListEnd;							/* 用于表示链表结束 */ /*< List item that contains the maximum possible item value meaning it is always at the end of the list and is therefore used as a marker. */
+	configLIST_VOLATILE UBaseType_t uxNumberOfItems;    /* 记录列表项的数量 */
+	ListItem_t * configLIST_VOLATILE pxIndex;			/* 列表项指针，用来记录当前列表项 */ /*< Used to walk through the list.  Points to the last item returned by a call to listGET_OWNER_OF_NEXT_ENTRY (). */
+	MiniListItem_t xListEnd;							/* 用于表示列表结束 */ /*< List item that contains the maximum possible item value meaning it is always at the end of the list and is therefore used as a marker. */
 	listSECOND_LIST_INTEGRITY_CHECK_VALUE				/* 用于完整性检查 */ /*< Set to a known value if configUSE_LIST_DATA_INTEGRITY_CHECK_BYTES is set to 1. */
 } List_t;
 

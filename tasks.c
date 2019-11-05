@@ -863,7 +863,7 @@ UBaseType_t x;
 		pxNewTCB->uxMutexesHeld = 0;
 	}
 	#endif /* configUSE_MUTEXES */
-	/* 初始化两个链表 */
+	/* 初始化两个列表 */
 	vListInitialiseItem( &( pxNewTCB->xStateListItem ) );
 	vListInitialiseItem( &( pxNewTCB->xEventListItem ) );
 
@@ -1043,7 +1043,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 }
 /*-----------------------------------------------------------*/
 
-#if ( INCLUDE_vTaskDelete == 1 )
+#if ( INCLUDE_vTaskDelete == 1 ) /* FreeRTOS中，任务删除函数是可裁剪的，大部分的任务创建之后就不会被删除，所以为了减小内核大小，允许不配置任务删除函数 */
 
 	void vTaskDelete( TaskHandle_t xTaskToDelete )
 	{
@@ -1055,8 +1055,8 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 			being deleted. */
 			pxTCB = prvGetTCBFromHandle( xTaskToDelete ); /* 根据任务句柄查找任务的TCB，若任务句柄为NULL，则是返回本任务的TCB */
 
-			/* Remove task from the ready list. */	/* 将要删除的任务宠就绪列表中删除 */
-			if( uxListRemove( &( pxTCB->xStateListItem ) ) == ( UBaseType_t ) 0 )
+			/* Remove task from the ready list. */	/* 将要删除的任务从就绪列表中删除 */
+			if( uxListRemove( &( pxTCB->xStateListItem ) ) == ( UBaseType_t ) 0 ) /* 任务删除后就绪列表是否为空 */
 			{
 				taskRESET_READY_PRIORITY( pxTCB->uxPriority );
 			}
@@ -1083,9 +1083,9 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 
 			if( pxTCB == pxCurrentTCB )
 			{
-				/* A task is deleting itself.  This cannot complete within the
-				task itself, as a context switch to another task is required.
-				Place the task in the termination list.  The idle task will
+				/* A task is deleting itself.  This cannot complete within the	如果是任务自杀的(删除本身)，它是无法独自完成全部操作的，例如释放任务堆栈等
+				task itself, as a context switch to another task is required.	这就需要另一个任务帮它处理遗产了，这个角色一般由IDLE task担任，但IDLE task
+				Place the task in the termination list.  The idle task will		如何才能找到这个僵尸呢，就要我们将挂掉的任务加入等待清理列表(xTasksWaitingTermination)中
 				check the termination list and free up any memory allocated by
 				the scheduler for the TCB and stack of the deleted task. */
 				vListInsertEnd( &xTasksWaitingTermination, &( pxTCB->xStateListItem ) );
@@ -1093,31 +1093,31 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 				/* Increment the ucTasksDeleted variable so the idle task knows
 				there is a task that has been deleted and that it should therefore
 				check the xTasksWaitingTermination list. */
-				++uxDeletedTasksWaitingCleanUp;
+				++uxDeletedTasksWaitingCleanUp;	/* 一个萝卜一个坑，多个萝卜多个坑 */
 
 				/* The pre-delete hook is primarily for the Windows simulator,
 				in which Windows specific clean up operations are performed,
 				after which it is not possible to yield away from this task -
 				hence xYieldPending is used to latch that a context switch is
 				required. */
-				portPRE_TASK_DELETE_HOOK( pxTCB, &xYieldPending );
+				portPRE_TASK_DELETE_HOOK( pxTCB, &xYieldPending ); /* 这个是用于Windows模拟器的 */
 			}
-			else
+			else	/* 删除别的任务，不是自杀 */
 			{
-				--uxCurrentNumberOfTasks;
-				prvDeleteTCB( pxTCB );
+				--uxCurrentNumberOfTasks;	/* 更新当前任务量 */
+				prvDeleteTCB( pxTCB );		/* 将删除了的任务的TCB干掉 */
 
 				/* Reset the next expected unblock time in case it referred to
 				the task that has just been deleted. */
-				prvResetNextTaskUnblockTime();
+				prvResetNextTaskUnblockTime(); /* 重置下一个预期的未阻塞时间，以防它调用刚刚删除的任务。 */
 			}
 
 			traceTASK_DELETE( pxTCB );
 		}
-		taskEXIT_CRITICAL();
+		taskEXIT_CRITICAL(); /* 退出临界区 */
 
 		/* Force a reschedule if it is the currently running task that has just
-		been deleted. */
+		been deleted. */ /* 如果当前正在运行的任务刚刚被删除，则强制重新调度。 */
 		if( xSchedulerRunning != pdFALSE )
 		{
 			if( pxTCB == pxCurrentTCB )
@@ -1567,16 +1567,16 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 	{
 	TCB_t *pxTCB;
 
-		taskENTER_CRITICAL();
+		taskENTER_CRITICAL();/* 进入临界区 */
 		{
 			/* If null is passed in here then it is the running task that is
 			being suspended. */
-			pxTCB = prvGetTCBFromHandle( xTaskToSuspend );
+			pxTCB = prvGetTCBFromHandle( xTaskToSuspend ); /* 获取任务TCB，若参数NULL则返回自身TCB */
 
 			traceTASK_SUSPEND( pxTCB );
 
 			/* Remove task from the ready/delayed list and place in the
-			suspended list. */
+			suspended list. */ /* 将任务从就绪列表或阻塞列表中删除，并将之放入挂起列表中 */
 			if( uxListRemove( &( pxTCB->xStateListItem ) ) == ( UBaseType_t ) 0 )
 			{
 				taskRESET_READY_PRIORITY( pxTCB->uxPriority );
@@ -1596,17 +1596,17 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 				mtCOVERAGE_TEST_MARKER();
 			}
 
-			vListInsertEnd( &xSuspendedTaskList, &( pxTCB->xStateListItem ) );
+			vListInsertEnd( &xSuspendedTaskList, &( pxTCB->xStateListItem ) ); /* 加入挂起列表中 */
 		}
-		taskEXIT_CRITICAL();
+		taskEXIT_CRITICAL(); /* 退出临界区 */
 
-		if( xSchedulerRunning != pdFALSE )
+		if( xSchedulerRunning != pdFALSE ) /* 任务调度器已开启 */
 		{
 			/* Reset the next expected unblock time in case it referred to the
 			task that is now in the Suspended state. */
 			taskENTER_CRITICAL();
 			{
-				prvResetNextTaskUnblockTime();
+				prvResetNextTaskUnblockTime();  /* 重置下一个预期的未阻塞时间，以防它调用刚刚挂起的任务。 */
 			}
 			taskEXIT_CRITICAL();
 		}
@@ -1615,7 +1615,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 			mtCOVERAGE_TEST_MARKER();
 		}
 
-		if( pxTCB == pxCurrentTCB )
+		if( pxTCB == pxCurrentTCB ) /* 挂起自身 */
 		{
 			if( xSchedulerRunning != pdFALSE )
 			{
@@ -1625,10 +1625,10 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 			}
 			else
 			{
-				/* The scheduler is not running, but the task that was pointed
-				to by pxCurrentTCB has just been suspended and pxCurrentTCB
+				/* The scheduler is not running, but the task that was pointed 	    调度程序没有运行，但是当前任务指针(pxCurrentTCB)指向的任务刚刚被挂起，
+				to by pxCurrentTCB has just been suspended and pxCurrentTCB		必须调整pxCurrentTCB以指向另一个任务。
 				must be adjusted to point to a different task. */
-				if( listCURRENT_LIST_LENGTH( &xSuspendedTaskList ) == uxCurrentNumberOfTasks )
+				if( listCURRENT_LIST_LENGTH( &xSuspendedTaskList ) == uxCurrentNumberOfTasks ) /* 挂起的任务数等于任务总数，即全部挂起 */
 				{
 					/* No other tasks are ready, so set pxCurrentTCB back to
 					NULL so when the next task is created pxCurrentTCB will
@@ -1638,7 +1638,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 				}
 				else
 				{
-					vTaskSwitchContext();
+					vTaskSwitchContext(); /* 有任务没被挂起，则调用vTaskSwitchContext()获取下一个要运行的任务 */
 				}
 			}
 		}
@@ -1652,7 +1652,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 /*-----------------------------------------------------------*/
 
 #if ( INCLUDE_vTaskSuspend == 1 )
-
+	/* 就是搜索xSuspendedTaskList、xPendingReadyList列表，看有没有这个任务 */
 	static BaseType_t prvTaskIsTaskSuspended( const TaskHandle_t xTask )
 	{
 	BaseType_t xReturn = pdFALSE;
@@ -1664,17 +1664,17 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 		/* It does not make sense to check if the calling task is suspended. */
 		configASSERT( xTask );
 
-		/* Is the task being resumed actually in the suspended list? */
+		/* Is the task being resumed actually in the suspended list? */ /* 挂起列表中是否有这个任务 */
 		if( listIS_CONTAINED_WITHIN( &xSuspendedTaskList, &( pxTCB->xStateListItem ) ) != pdFALSE )
 		{
-			/* Has the task already been resumed from within an ISR? */
+			/* Has the task already been resumed from within an ISR? */ /* 这个任务有没在中断中被恢复了 */
 			if( listIS_CONTAINED_WITHIN( &xPendingReadyList, &( pxTCB->xEventListItem ) ) == pdFALSE )
 			{
 				/* Is it in the suspended list because it is in the	Suspended
-				state, or because is is blocked with no timeout? */
+				state, or because is is blocked with no timeout? */ /* 这个任务的挂起状态是不是因为自己设置了阻塞 */
 				if( listIS_CONTAINED_WITHIN( NULL, &( pxTCB->xEventListItem ) ) != pdFALSE )
 				{
-					xReturn = pdTRUE;
+					xReturn = pdTRUE; /* 挂起列表有这个任务&&在中断中没被恢复&&不是因为阻塞而挂起的 */
 				}
 				else
 				{
@@ -1708,25 +1708,25 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 
 		/* The parameter cannot be NULL as it is impossible to resume the
 		currently executing task. */
-		if( ( pxTCB != NULL ) && ( pxTCB != pxCurrentTCB ) )
+		if( ( pxTCB != NULL ) && ( pxTCB != pxCurrentTCB ) ) /* TCB不可能为NULL或者pxCurrentTCB，不存在恢复当前任务的情况 */
 		{
-			taskENTER_CRITICAL();
+			taskENTER_CRITICAL(); /* 进入临界区 */
 			{
-				if( prvTaskIsTaskSuspended( pxTCB ) != pdFALSE )
+				if( prvTaskIsTaskSuspended( pxTCB ) != pdFALSE )	/* 判断要恢复的任务是不是处于挂起状态，不然恢复毛线啊 */
 				{
 					traceTASK_RESUME( pxTCB );
 
 					/* As we are in a critical section we can access the ready
 					lists even if the scheduler is suspended. */
-					( void ) uxListRemove(  &( pxTCB->xStateListItem ) );
-					prvAddTaskToReadyList( pxTCB );
+					( void ) uxListRemove(  &( pxTCB->xStateListItem ) ); /* 将这个任务从挂起列表中删除，因为它当前就处于挂起态，所以它在挂起列表中 */
+					prvAddTaskToReadyList( pxTCB ); /* 将该任务挂在就绪列表中，这样它就恢复了 */
 
 					/* We may have just resumed a higher priority task. */
-					if( pxTCB->uxPriority >= pxCurrentTCB->uxPriority )
+					if( pxTCB->uxPriority >= pxCurrentTCB->uxPriority ) /* 若这个刚被恢复的任务优先级比当前运行的任务的优先级高，那就进行任务切换 */
 					{
 						/* This yield may not cause the task just resumed to run,
 						but will leave the lists in the correct state for the
-						next yield. */
+						next yield. *//* 这个任务切换呢不一定会导致这个刚被恢复的任务立刻运行，但是下一次任务调度的优先级排序就正确啦 */
 						taskYIELD_IF_USING_PREEMPTION();
 					}
 					else
@@ -3385,7 +3385,7 @@ static void prvCheckTasksWaitingTermination( void )
 			{
 				TCB_t *pxTCB;
 
-				taskENTER_CRITICAL(); /* 进入临界区，将任务链表项从等待释放的链表中删除 */
+				taskENTER_CRITICAL(); /* 进入临界区，将任务列表项从等待释放的列表中删除 */
 				{
 					pxTCB = ( TCB_t * ) listGET_OWNER_OF_HEAD_ENTRY( ( &xTasksWaitingTermination ) );
 					( void ) uxListRemove( &( pxTCB->xStateListItem ) );

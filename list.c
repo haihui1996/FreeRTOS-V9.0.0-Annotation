@@ -75,24 +75,24 @@
 /*-----------------------------------------------------------
  * PUBLIC LIST API documented in list.h
  *----------------------------------------------------------*/
-/* 链表的初始化 */
+/* 列表的初始化 */
 void vListInitialise( List_t * const pxList )
 {
 	/* The list structure contains a list item which is used to mark the
 	end of the list.  To initialise the list the list end is inserted
 	as the only list entry. */
-	pxList->pxIndex = ( ListItem_t * ) &( pxList->xListEnd ); /* 链表项指针指向最后的mini链表项 */			/*lint !e826 !e740 The mini list structure is used as the list end to save RAM.  This is checked and valid. */
+	pxList->pxIndex = ( ListItem_t * ) &( pxList->xListEnd ); /* 列表项指针指向最后的mini列表项 */			/*lint !e826 !e740 The mini list structure is used as the list end to save RAM.  This is checked and valid. */
 
 	/* The list end value is the highest possible value in the list to
 	ensure it remains at the end of the list. */
-	pxList->xListEnd.xItemValue = portMAX_DELAY;	/* 将链表值设置为能表示的最大值 */
+	pxList->xListEnd.xItemValue = portMAX_DELAY;	/* 将列表值设置为能表示的最大值 */
 
 	/* The list end next and previous pointers point to itself so we know
-	when the list is empty. */ /* 将链表的pxNext指针和pxPrevious指针都指向链表结束位置，表示链表为空 */
+	when the list is empty. */ /* 将列表的pxNext指针和pxPrevious指针都指向列表结束位置，表示列表为空 */
 	pxList->xListEnd.pxNext = ( ListItem_t * ) &( pxList->xListEnd );	/*lint !e826 !e740 The mini list structure is used as the list end to save RAM.  This is checked and valid. */
 	pxList->xListEnd.pxPrevious = ( ListItem_t * ) &( pxList->xListEnd );/*lint !e826 !e740 The mini list structure is used as the list end to save RAM.  This is checked and valid. */
 
-	pxList->uxNumberOfItems = ( UBaseType_t ) 0U;	/* 新建的链表，链表项个数肯定为0啦 */
+	pxList->uxNumberOfItems = ( UBaseType_t ) 0U;	/* 新建的列表，列表项个数肯定为0啦 */
 
 	/* Write known values into the list if
 	configUSE_LIST_DATA_INTEGRITY_CHECK_BYTES is set to 1. */
@@ -100,7 +100,7 @@ void vListInitialise( List_t * const pxList )
 	listSET_LIST_INTEGRITY_CHECK_2_VALUE( pxList );
 }
 /*-----------------------------------------------------------*/
-/* 链表项的初始化 */
+/* 列表项的初始化 */
 void vListInitialiseItem( ListItem_t * const pxItem )
 {
 	/* Make sure the list item is not recorded as being on a list. */
@@ -112,7 +112,7 @@ void vListInitialiseItem( ListItem_t * const pxItem )
 	listSET_SECOND_LIST_ITEM_INTEGRITY_CHECK_VALUE( pxItem );
 }
 /*-----------------------------------------------------------*/
-/* 将pxNewListItem插入到链表项指针(pxIndex)位置之前 */
+/* 将pxNewListItem插入到列表项指针(pxIndex)位置之前 */
 void vListInsertEnd( List_t * const pxList, ListItem_t * const pxNewListItem )
 {
 ListItem_t * const pxIndex = pxList->pxIndex;
@@ -136,12 +136,12 @@ ListItem_t * const pxIndex = pxList->pxIndex;
 	pxIndex->pxPrevious = pxNewListItem;
 
 	/* Remember which list the item is in. */
-	pxNewListItem->pvContainer = ( void * ) pxList; /* 指定链表项归属的链表 */
+	pxNewListItem->pvContainer = ( void * ) pxList; /* 指定列表项归属的列表 */
 
-	( pxList->uxNumberOfItems )++;	/* 插入了一项，链表项数量加一啦 */
+	( pxList->uxNumberOfItems )++;	/* 插入了一项，列表项数量加一啦 */
 }
 /*-----------------------------------------------------------*/
-/* 链表插入函数，这个函数插入的位置是由新链表项的项值决定的，最终链表的结果是按照链表项项值由小到大排序的 */
+/* 列表插入函数，这个函数插入的位置是由新列表项的项值决定的，最终列表的结果是按照列表项项值由小到大排序的 */
 void vListInsert( List_t * const pxList, ListItem_t * const pxNewListItem )
 {
 ListItem_t *pxIterator;
@@ -203,9 +203,9 @@ const TickType_t xValueOfInsertion = pxNewListItem->xItemValue;
 
 	/* Remember which list the item is in.  This allows fast removal of the
 	item later. */
-	pxNewListItem->pvContainer = ( void * ) pxList; /* 指定链表项归属的链表 */
+	pxNewListItem->pvContainer = ( void * ) pxList; /* 指定列表项归属的列表 */
 
-	( pxList->uxNumberOfItems )++;/* 插入了一项，链表项数量加一 */
+	( pxList->uxNumberOfItems )++;/* 插入了一项，列表项数量加一 */
 }
 /*-----------------------------------------------------------*/
 
@@ -213,14 +213,14 @@ UBaseType_t uxListRemove( ListItem_t * const pxItemToRemove )
 {
 /* The list item knows which list it is in.  Obtain the list from the list
 item. */
-List_t * const pxList = ( List_t * ) pxItemToRemove->pvContainer;/* 看这个要删除的链表项是属于哪个链表的 */
-	/* 移除该链表项 */
+List_t * const pxList = ( List_t * ) pxItemToRemove->pvContainer;/* 看这个要删除的列表项是属于哪个列表的 */
+	/* 移除该列表项 */
 	pxItemToRemove->pxNext->pxPrevious = pxItemToRemove->pxPrevious;
 	pxItemToRemove->pxPrevious->pxNext = pxItemToRemove->pxNext;
 
 	/* Only used during decision coverage testing. */
 	mtCOVERAGE_TEST_DELAY();
-	/* 检查一下该链表的链表项指针是不是指在了要被删除的链表项上，别把自己的项指针都搞丢了 */
+	/* 检查一下该列表的列表项指针是不是指在了要被删除的列表项上，别把自己的项指针都搞丢了 */
 	/* Make sure the index is left pointing to a valid item. */
 	if( pxList->pxIndex == pxItemToRemove )
 	{
@@ -235,6 +235,6 @@ List_t * const pxList = ( List_t * ) pxItemToRemove->pvContainer;/* 看这个要删除
 	( pxList->uxNumberOfItems )--; /* 一个萝卜一个坑，挖走萝卜埋好坑 */
 
 	return pxList->uxNumberOfItems;
-} // !!!注意啊，删除的链表项的内存没有被释放的
+} // !!!注意啊，删除的列表项的内存没有被释放的
 /*-----------------------------------------------------------*/
 
