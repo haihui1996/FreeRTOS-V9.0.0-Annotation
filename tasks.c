@@ -1049,13 +1049,13 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 	{
 	TCB_t *pxTCB;
 
-		taskENTER_CRITICAL();
+		taskENTER_CRITICAL(); /* 进入临界区 */
 		{
 			/* If null is passed in here then it is the calling task that is
 			being deleted. */
-			pxTCB = prvGetTCBFromHandle( xTaskToDelete );
+			pxTCB = prvGetTCBFromHandle( xTaskToDelete ); /* 根据任务句柄查找任务的TCB，若任务句柄为NULL，则是返回本任务的TCB */
 
-			/* Remove task from the ready list. */
+			/* Remove task from the ready list. */	/* 将要删除的任务宠就绪列表中删除 */
 			if( uxListRemove( &( pxTCB->xStateListItem ) ) == ( UBaseType_t ) 0 )
 			{
 				taskRESET_READY_PRIORITY( pxTCB->uxPriority );
